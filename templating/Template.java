@@ -12,5 +12,8 @@ import java.lang.annotation.Target;
         ElementType.FIELD
 })
 public @interface Template {
+    public enum Source {VALUE,FILE}
     String value();
+
+    Source source() default Source.VALUE;
 }

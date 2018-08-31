@@ -14,6 +14,8 @@ import static de.danielhons.lib.templating.Replaces.Type;
 @Slf4j
 public class StringReplacementReader implements ReplacementReader<String> {
 
+    private TemplateParser parser=new TemplateParser();
+
     @Override
     public Map<String, String> readReplacements(Object o) {
         Map<String, String> replacements = new HashMap<>();
@@ -37,12 +39,12 @@ public class StringReplacementReader implements ReplacementReader<String> {
     }
 
     private void processClass(Class cls, Object obj, Map<String, String> replacements) {
-        processFields(cls,obj, replacements);
-        processMethods(cls,obj, replacements);
+        processFields(cls, obj, replacements);
+        processMethods(cls, obj, replacements);
     }
 
 
-    private void processFields(Class cls,Object obj, Map<String, String> replacements) {
+    private void processFields(Class cls, Object obj, Map<String, String> replacements) {
         Field[] fields = cls.getDeclaredFields();
         processFields(fields, obj, replacements);
     }
@@ -51,40 +53,50 @@ public class StringReplacementReader implements ReplacementReader<String> {
         for (Field field : fields) {
             field.setAccessible(true);
             try {
-                processReplacesOnField(field,obj,replacements);
-                processConditionOnField(field,obj,replacements);
+                processReplacesOnField(field, obj, replacements);
+                processConditionOnField(field, obj, replacements);
+                processIterableOnField(field, obj, replacements);
             } catch (IllegalAccessException e) {
-                log.error("Could not access field",e);
+                log.error("Could not access field", e);
             }
 
         }
+    }
+
+    private void processIterableOnField(Field field, Object obj, Map<String, String> replacements)
+            throws IllegalAccessException {
+        ListReplaces annotation = field.getAnnotation(ListReplaces.class);
+        if (annotation==null) return;
+        Iterable list = (Iterable) field.get(obj);
+        replaceIterable(annotation, list, replacements);
     }
 
     private void processConditionOnField(Field field, Object obj, Map<String, String> replacements)
             throws IllegalAccessException {
         ReplaceCondition annotation = field.getAnnotation(ReplaceCondition.class);
-        if (annotation!=null){
+        if (annotation != null) {
             processConditionAnnotation(annotation, (Boolean) field.get(obj), replacements);
         }
     }
 
-    private void processReplacesOnField(Field field, Object obj,Map<String,String> replacements)
+    private void processReplacesOnField(Field field, Object obj, Map<String, String> replacements)
             throws IllegalAccessException {
-            Replaces annonation = field.getAnnotation(Replaces.class);
-            if (annonation != null) {
-                processReplacesAnnotation(annonation, field.get(obj), replacements);
-            }
+        Replaces annonation = field.getAnnotation(Replaces.class);
+        if (annonation != null) {
+            processReplacesAnnotation(annonation, field.get(obj), replacements);
+        }
 
     }
 
 
-    private void processMethods(Class cls,Object obj, Map<String, String> replacements) {
+    private void processMethods(Class cls, Object obj, Map<String, String> replacements) {
         Method[] methods = cls.getDeclaredMethods();
         for (Method method : methods) {
             method.setAccessible(true);
             try {
                 processReplaceOnMethod(method, obj, replacements);
-                processConditionOnMethod(method,obj,replacements);
+                processConditionOnMethod(method, obj, replacements);
+                processIterableOnMethod(method, obj, replacements);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 String msg = "Could not invoke Replacement for object, does it have arguments?";
                 throw new RuntimeException(msg, e);
@@ -92,22 +104,40 @@ public class StringReplacementReader implements ReplacementReader<String> {
         }
     }
 
+    private void processIterableOnMethod(Method method, Object obj, Map<String, String> replacements)
+            throws InvocationTargetException, IllegalAccessException {
+        ListReplaces annotation = method.getAnnotation(ListReplaces.class);
+        if (annotation==null) return;
+        Iterable list = (Iterable) method.invoke(obj, (Object[]) null);
+        replaceIterable(annotation, list, replacements);
+    }
+
+
+    private void replaceIterable(ListReplaces annotation, Iterable list, Map<String, String> replacements) {
+        StringBuilder builder = new StringBuilder();
+        for (Object o : list) {
+            builder.append(parser.parse(o));
+            builder.append(" "); //TODO parameter required?
+        }
+        replacements.put(annotation.value(), builder.toString());
+    }
+
     private void processConditionOnMethod(Method method, Object obj, Map<String, String> replacements)
             throws InvocationTargetException, IllegalAccessException {
         ReplaceCondition annotation = method.getAnnotation(ReplaceCondition.class);
-        if (annotation!=null){
-            processConditionAnnotation(annotation, (Boolean) method.invoke(obj, null), replacements);
+        if (annotation != null) {
+            processConditionAnnotation(annotation, (Boolean) method.invoke(obj, (Object[]) null), replacements);
         }
     }
 
     private void processConditionAnnotation(ReplaceCondition annotation,
                                             Boolean value,
                                             Map<String, String> replacements) {
-        if (value) replacements.put(annotation.value(),annotation.ifTrue());
-        else replacements.put(annotation.value(),annotation.ifFalse());
+        if (value) { replacements.put(annotation.value(), annotation.ifTrue()); }
+        else { replacements.put(annotation.value(), annotation.ifFalse()); }
     }
 
-    private void processReplaceOnMethod(Method method, Object obj, Map<String,String> replacements)
+    private void processReplaceOnMethod(Method method, Object obj, Map<String, String> replacements)
             throws InvocationTargetException {
         try {
             Replaces annonation = method.getAnnotation(Replaces.class);
@@ -130,7 +160,7 @@ public class StringReplacementReader implements ReplacementReader<String> {
             }
             Template inner = o.getClass().getDeclaredAnnotation(Template.class);
             if (inner != null) { //Hat ein eigenes Template
-                replacements.put(path, new TemplateParser().parse(o));
+                replacements.put(path, parser.parse(o));
             }
             else { //Hat kein eigenes Template
                 replacements.put(path, o.toString());
