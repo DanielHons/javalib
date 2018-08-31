@@ -1,4 +1,4 @@
-package de.danielhons.lib.annotations;
+package de.danielhons.lib.templating;
 
 import java.util.Map;
 

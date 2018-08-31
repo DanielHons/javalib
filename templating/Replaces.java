@@ -1,4 +1,4 @@
-package de.danielhons.lib.annotations;
+package de.danielhons.lib.templating;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -7,10 +7,17 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({
-        ElementType.TYPE,
-        ElementType.METHOD,
-        ElementType.FIELD
+        ElementType.FIELD,
+        ElementType.METHOD
 })
-public @interface Template {
+public @interface Replaces {
+    Type type() default Type.STRING;
+
+
     String value();
+
+    enum Type {
+        STRING,
+        OBJECT
+    }
 }

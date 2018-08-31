@@ -1,4 +1,4 @@
-package de.danielhons.lib.annotations;
+package de.danielhons.lib.templating;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -9,14 +9,6 @@ import java.lang.annotation.Target;
 @Target({
         ElementType.FIELD
 })
-public @interface Replaces {
-    Type type() default Type.STRING;
-
-
+public @interface ListReplaces {
     String value();
-
-    enum Type {
-        STRING,
-        OBJECT
-    }
 }
