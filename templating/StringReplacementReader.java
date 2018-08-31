@@ -51,14 +51,30 @@ public class StringReplacementReader implements ReplacementReader<String> {
         for (Field field : fields) {
             field.setAccessible(true);
             try {
-                Replaces annonation = field.getAnnotation(Replaces.class);
-                if (annonation != null) {
-                    processReplacesAnnotation(annonation, field.get(obj), replacements);
-                }
+                processReplacesOnField(field,obj,replacements);
+                processConditionOnField(field,obj,replacements);
             } catch (IllegalAccessException e) {
-                e.printStackTrace();
+                log.error("Could not access field",e);
             }
+
         }
+    }
+
+    private void processConditionOnField(Field field, Object obj, Map<String, String> replacements)
+            throws IllegalAccessException {
+        ReplaceCondition annotation = field.getAnnotation(ReplaceCondition.class);
+        if (annotation!=null){
+            processConditionAnnotation(annotation, (Boolean) field.get(obj), replacements);
+        }
+    }
+
+    private void processReplacesOnField(Field field, Object obj,Map<String,String> replacements)
+            throws IllegalAccessException {
+            Replaces annonation = field.getAnnotation(Replaces.class);
+            if (annonation != null) {
+                processReplacesAnnotation(annonation, field.get(obj), replacements);
+            }
+
     }
 
 
@@ -67,17 +83,40 @@ public class StringReplacementReader implements ReplacementReader<String> {
         for (Method method : methods) {
             method.setAccessible(true);
             try {
-                Replaces annonation = method.getAnnotation(Replaces.class);
-                if (annonation != null) {
-                    method.invoke(obj, null);
-                    processReplacesAnnotation(annonation, method.invoke(obj, null), replacements);
-                }
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InvocationTargetException e) {
+                processReplaceOnMethod(method, obj, replacements);
+                processConditionOnMethod(method,obj,replacements);
+            } catch (IllegalAccessException | InvocationTargetException e) {
                 String msg = "Could not invoke Replacement for object, does it have arguments?";
                 throw new RuntimeException(msg, e);
             }
+        }
+    }
+
+    private void processConditionOnMethod(Method method, Object obj, Map<String, String> replacements)
+            throws InvocationTargetException, IllegalAccessException {
+        ReplaceCondition annotation = method.getAnnotation(ReplaceCondition.class);
+        if (annotation!=null){
+            processConditionAnnotation(annotation, (Boolean) method.invoke(obj, null), replacements);
+        }
+    }
+
+    private void processConditionAnnotation(ReplaceCondition annotation,
+                                            Boolean value,
+                                            Map<String, String> replacements) {
+        if (value) replacements.put(annotation.value(),annotation.ifTrue());
+        else replacements.put(annotation.value(),annotation.ifFalse());
+    }
+
+    private void processReplaceOnMethod(Method method, Object obj, Map<String,String> replacements)
+            throws InvocationTargetException {
+        try {
+            Replaces annonation = method.getAnnotation(Replaces.class);
+            if (annonation != null) {
+                method.invoke(obj, null);
+                processReplacesAnnotation(annonation, method.invoke(obj, null), replacements);
+            }
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
         }
     }
 
