@@ -25,7 +25,7 @@ public class TemplateParser {
         Template t = o.getClass().getDeclaredAnnotation(Template.class);
 
         String templatePlainText = getTemplateSource(t);
-        if (t == null) throw new IllegalArgumentException("Parsing failed: not templated");
+        if (t == null) throw new IllegalArgumentException("Parsing failed: class not marked as template");
         Map<String, String> replacements = new StringReplacementReader().readReplacements(o);
         return replaceInTemplate(replacements, templatePlainText);
     }
@@ -49,7 +49,7 @@ public class TemplateParser {
     }
 
 
-    private String replaceInTemplate(Map<String, String> replacements, String template) {
+    public String replaceInTemplate(Map<String, String> replacements, String template) {
         for (Map.Entry<String, String> entry : replacements.entrySet()) {
             String regex = Pattern.quote(transformKey(entry.getKey()));
             template = template.replaceAll(regex, Matcher.quoteReplacement(entry.getValue()));
